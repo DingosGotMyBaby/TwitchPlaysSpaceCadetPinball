@@ -223,7 +223,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
         --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources --bind")
     add_custom_command(TARGET SpaceCadetPinball POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
-            SpaceCadetPinball/tmi.min.js
+            ${CMAKE_CURRENT_SOURCE_DIR}/SpaceCadetPinball/tmi.min.js
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tmi.min.js
     )
     message(STATUS "Emscripten build: ${CMAKE_CURRENT_BINARY_DIR}/index.html")
