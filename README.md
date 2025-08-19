@@ -11,7 +11,7 @@ Valid commands are:
 | !newgame |  [x]   |  
 | !demo |  [x]   |  
 
-Access the game via TODO: PUT URL HERE
+Access the game via https://dingosgotmybaby.github.io/TwitchPlaysSpaceCadetPinball?channel=bobross&vol=0.3
 
 **Summary:** Reverse engineering of `3D Pinball for Windows – Space Cadet`, a game bundled with Windows.
 
