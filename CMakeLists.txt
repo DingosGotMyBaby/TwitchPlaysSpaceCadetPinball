@@ -217,6 +217,7 @@ target_link_libraries(SpaceCadetPinball ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     target_link_libraries(SpaceCadetPinball idbfs.js)
+    set_target_properties(SpaceCadetPinball PROPERTIES OUTPUT_NAME "index")
     set_target_properties(SpaceCadetPinball PROPERTIES LINK_FLAGS
         "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1  \
         --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/SpaceCadetPinball/emscripten_shell.html \
