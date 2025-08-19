@@ -36,7 +36,7 @@ jobs:
         run: |
           URL="${{ secrets.REMOTE_BUCKET }}/game_resources.zip"
           echo "::add-mask::$URL"
-          wget -O game_resources.zip "$URL" && unzip -o game_resources.zip -d game_resources
+          wget -q -O game_resources.zip "$URL" && unzip -o game_resources.zip -d game_resources
 
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
