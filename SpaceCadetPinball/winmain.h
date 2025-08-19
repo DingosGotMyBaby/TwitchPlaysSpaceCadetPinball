@@ -61,6 +61,8 @@ public:
 	static void Restart();
 	static bool RestartRequested() { return restart; }
 	static void UpdateFrameRate();
+	static void TriggerEvent(const std::string& event_type);
+
 private:
 	static int return_value, bQuit, DispFrameRate, DispGRhistory, activated;
 	static int has_focus, mouse_down, last_mouse_x, last_mouse_y, no_time_loss;

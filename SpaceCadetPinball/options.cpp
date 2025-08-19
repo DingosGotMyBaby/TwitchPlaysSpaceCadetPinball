@@ -135,7 +135,13 @@ void options::uninit()
 	set_int("Updates Per Second", Options.UpdatesPerSecond);
 }
 
-
+/**
+ * Gets an integer setting from the options.
+ * If the setting does not exist, it returns the default value.
+ * @param lpValueName The name of the setting.
+ * @param defaultValue The default value to return if the setting does not exist.
+ * @return The value of the setting or the default value.
+ */
 int options::get_int(LPCSTR lpValueName, int defaultValue)
 {
 	auto value = GetSetting(lpValueName, std::to_string(defaultValue));
@@ -269,6 +275,13 @@ void options::MyUserData_WriteAll(ImGuiContext* ctx, ImGuiSettingsHandler* handl
 	buf->append("\n");
 }
 
+/**
+ * Gets a setting from the options.
+ * If the setting does not exist, it creates it with the given value.
+ * @param key The name of the setting.
+ * @param value The default value to return if the setting does not exist.
+ * @return The value of the setting or the default value.
+ */
 const std::string& options::GetSetting(const std::string& key, const std::string& value)
 {
 	auto setting = settings.find(key);

@@ -12,43 +12,60 @@
 midi_song midi::currentMidi = {false};
 
 #ifdef MUSIC_TSF
-tml_message* midi::currentMessage = nullptr;
+tml_message *midi::currentMessage = nullptr;
 static float midiTime = 0.0f;
 static float sampPerSec = 1000.0 / 22050.0;
-static tsf* tsfSynth = nullptr;
+static tsf *tsfSynth = nullptr;
 
-void midi::sdl_audio_callback(void* data, Uint8 *stream, int len)
-{
+/**
+ * SDL audio callback function for rendering MIDI audio.
+ * This function is called by SDL to fill the audio buffer with rendered MIDI data.
+ * It processes MIDI messages and renders audio samples using the TSF synthesizer.
+ * @param data the user data pointer, not used here.
+ * @param stream the audio buffer to fill with rendered samples.
+ * @param len length of the audio buffer in bytes.
+ *
+ * The buffer is filled with stereo audio samples in 16-bit signed integer format.
+ * The function processes MIDI messages in blocks, rendering audio samples for each block.
+ * It handles various MIDI message types such as program change, note on, note off,
+ * pitch bend, and control change.
+ * The function ensures that the audio buffer is cleared before rendering and
+ * processes MIDI messages in a loop until all messages for the current time are handled.
+ * The rendered audio samples are written to the provided audio stream.
+ */
+void midi::sdl_audio_callback(void *data, Uint8 *stream, int len) {
 	memset(stream, 0, len);
-		
+
 	if (tsfSynth == nullptr) {
 		return;
 	}
 
 	int SampleBlock, SampleCount = (len / (2 * sizeof(short)));
-	for (SampleBlock = TSF_RENDER_EFFECTSAMPLEBLOCK; SampleCount; SampleCount -= SampleBlock, stream += (SampleBlock * (2 * sizeof(short))))
-	{
+	for (SampleBlock = TSF_RENDER_EFFECTSAMPLEBLOCK; SampleCount;
+	     SampleCount -= SampleBlock, stream += (SampleBlock * (2 * sizeof(short)))) {
 		if (SampleBlock > SampleCount) SampleBlock = SampleCount;
 
-		for (midiTime += SampleBlock * sampPerSec; midi::currentMessage && midiTime >= midi::currentMessage->time; )
-		{
-			switch (midi::currentMessage->type)
-			{
+		for (midiTime += SampleBlock * sampPerSec; midi::currentMessage && midiTime >= midi::currentMessage->time;) {
+			switch (midi::currentMessage->type) {
 				case TML_PROGRAM_CHANGE:
-					tsf_channel_set_presetnumber(tsfSynth, midi::currentMessage->channel, midi::currentMessage->program, (midi::currentMessage->channel == 9));
+					tsf_channel_set_presetnumber(tsfSynth, midi::currentMessage->channel, midi::currentMessage->program,
+					                             (midi::currentMessage->channel == 9));
 					tsf_channel_midi_control(tsfSynth, midi::currentMessage->channel, TML_ALL_NOTES_OFF, 0);
 					break;
 				case TML_NOTE_ON:
-					tsf_channel_note_on(tsfSynth, midi::currentMessage->channel, midi::currentMessage->key, midi::currentMessage->velocity / 127.0f);
+					tsf_channel_note_on(tsfSynth, midi::currentMessage->channel, midi::currentMessage->key,
+					                    midi::currentMessage->velocity / 127.0f);
 					break;
 				case TML_NOTE_OFF:
 					tsf_channel_note_off(tsfSynth, midi::currentMessage->channel, midi::currentMessage->key);
 					break;
 				case TML_PITCH_BEND:
-					tsf_channel_set_pitchwheel(tsfSynth, midi::currentMessage->channel, midi::currentMessage->pitch_bend);
+					tsf_channel_set_pitchwheel(tsfSynth, midi::currentMessage->channel,
+					                           midi::currentMessage->pitch_bend);
 					break;
 				case TML_CONTROL_CHANGE:
-					tsf_channel_midi_control(tsfSynth, midi::currentMessage->channel, midi::currentMessage->control, midi::currentMessage->control_value);
+					tsf_channel_midi_control(tsfSynth, midi::currentMessage->channel, midi::currentMessage->control,
+					                         midi::currentMessage->control_value);
 					break;
 			}
 
@@ -61,23 +78,20 @@ void midi::sdl_audio_callback(void* data, Uint8 *stream, int len)
 		}
 
 		// Render the block of audio samples in float format
-		tsf_render_short(tsfSynth, (short*)stream, SampleBlock, 0);
+		tsf_render_short(tsfSynth, (short *) stream, SampleBlock, 0);
 	}
 }
 #endif
 
-constexpr uint32_t FOURCC(uint8_t a, uint8_t b, uint8_t c, uint8_t d)
-{
+constexpr uint32_t FOURCC(uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
 	return static_cast<uint32_t>((d << 24) | (c << 16) | (b << 8) | a);
 }
 
-int ToVariableLen(uint32_t value, uint32_t& dst)
-{
+int ToVariableLen(uint32_t value, uint32_t &dst) {
 	auto count = 1;
 	dst = value & 0x7F;
 
-	while ((value >>= 7))
-	{
+	while ((value >>= 7)) {
 		dst <<= 8;
 		dst |= ((value & 0x7F) | 0x80);
 		count++;
@@ -86,10 +100,13 @@ int ToVariableLen(uint32_t value, uint32_t& dst)
 	return count;
 }
 
-int midi::play_pb_theme(int flag)
-{
-	if (pb::FullTiltMode)
-	{
+/**
+ * Plays the pinball theme music.
+ * @param flag unused flag, can be 0 or 1.
+ * @return int Returns 1 if the music is playing, 0 otherwise.
+ */
+int midi::play_pb_theme(int flag) {
+	if (pb::FullTiltMode) {
 		return play_ft(&track1);
 	}
 
@@ -115,10 +132,8 @@ int midi::play_pb_theme(int flag)
 #endif
 }
 
-int midi::music_stop()
-{
-	if (pb::FullTiltMode)
-	{
+int midi::music_stop() {
+	if (pb::FullTiltMode) {
 		return stop_ft();
 	}
 
@@ -134,10 +149,12 @@ extern unsigned char gm_sf2[];
 extern unsigned int gm_sf2_len;
 #endif
 
-int midi::music_init()
-{
-	if (pb::FullTiltMode)
-	{
+int midi::music_init(const float volume) {
+	// Volume for tsf is based on gain in decibels so 0 is unity
+	// We need to take the float (0-1) and convert it to be between -40 and 0
+	float midiVolume = volume * 40.0f - 40.0f;
+
+	if (pb::FullTiltMode) {
 		return music_init_ft();
 	}
 
@@ -157,12 +174,12 @@ int midi::music_init()
 #elif defined(MUSIC_TSF)
 	currentMessage = nullptr;
 	currentMidi = {false};
-	
-	tsfSynth = tsf_load_memory(gm_sf2, (int)gm_sf2_len);
+
+	tsfSynth = tsf_load_memory(gm_sf2, (int) gm_sf2_len);
 
 	int sampleRate;
 	if (Mix_QuerySpec(&sampleRate, nullptr, nullptr)) {
-		tsf_set_output(tsfSynth, TSF_STEREO_INTERLEAVED, sampleRate, 0.0f);
+		tsf_set_output(tsfSynth, TSF_STEREO_INTERLEAVED, sampleRate, midiVolume);
 		sampPerSec = 1000.0f / float(sampleRate);
 	}
 
@@ -182,10 +199,8 @@ int midi::music_init()
 #endif
 }
 
-void midi::music_shutdown()
-{
-	if (pb::FullTiltMode)
-	{
+void midi::music_shutdown() {
+	if (pb::FullTiltMode) {
 		music_shutdown_ft();
 		return;
 	}
@@ -195,13 +210,18 @@ void midi::music_shutdown()
 #endif
 }
 
+/**
+ *  THIS SECTION IS FOR FULL TILT MIDI MUSIC
+ *  It is not applicable for the demo game that was included with Windows XP.
+ */
+
 
 std::vector<midi_song> midi::TrackList;
 midi_song midi::track1, midi::track2, midi::track3, midi::active_track, midi::active_track2;
 int midi::some_flag1;
 
-int midi::music_init_ft()
-{
+int midi::music_init_ft() {
+	// Initialises the music system for Full Tilt mode.
 	active_track = {false};
 	//TrackList = new objlist_class<midi_song>(0, 1);
 	TrackList.clear();
@@ -216,13 +236,13 @@ int midi::music_init_ft()
 	return 1;
 }
 
-void midi::music_shutdown_ft()
-{
+void midi::music_shutdown_ft() {
+	// Shuts down the music system for Full Tilt mode.
 #ifdef MUSIC_SDL
 	if (active_track.valid)
 		Mix_HaltMusic();
 
-	for (auto& track : TrackList) {
+	for (auto &track: TrackList) {
 		if (track.valid) Mix_FreeMusic(track.handle);
 	}
 
@@ -237,7 +257,7 @@ void midi::music_shutdown_ft()
 		midiTime = 0.0f;
 	}
 
-	for (auto& track : TrackList) {
+	for (auto &track: TrackList) {
 		//if (track.valid) tml_free(track.handle);
 	}
 
@@ -245,14 +265,19 @@ void midi::music_shutdown_ft()
 #endif
 }
 
-midi_song midi::load_track(std::string fileName)
-{
+/**
+ * This function loads the music for the Full Tilt mode.
+ * It is not applicable for the demo game that was included with Windows XP.
+ * @param fileName The name of the file to load, without the extension.
+ * @return midi_song Returns a midi_song object that contains the loaded MIDI data.
+ * If the file could not be loaded, it returns a midi_song with valid set to false
+ */
+midi_song midi::load_track(std::string fileName) {
 	auto origFile = fileName;
 
-	// File name is in lower case, while game data is in upper case.				
+	// File name is in lower case, while game data is in upper case.
 	std::transform(fileName.begin(), fileName.end(), fileName.begin(), [](unsigned char c) { return std::toupper(c); });
-	if (pb::FullTiltMode)
-	{
+	if (pb::FullTiltMode) {
 		// FT sounds are in SOUND subfolder
 		fileName.insert(0, 1, PathSeparator);
 		fileName.insert(0, "SOUND");
@@ -273,44 +298,39 @@ midi_song midi::load_track(std::string fileName)
 #ifdef MUSIC_SDL
 	auto rw = SDL_RWFromMem(midi->data(), static_cast<int>(midi->size()));
 	auto audio = Mix_LoadMUS_RW(rw, 1); // This call seems to leak memory no matter what.
-	
+
 #elif defined(MUSIC_TSF)
 	auto audio = tml_load_memory(midi->data(), static_cast<int>(midi->size()));
 #else
-	void* audio = nullptr;
+	void *audio = nullptr;
 #endif
 	delete midi;
 	if (!audio)
 		return {false};
-	
+
 	midi_song song = {true, audio};
 	TrackList.push_back(song);
 
 	return song;
 }
 
-int midi::play_ft(midi_song* midi)
-{
+int midi::play_ft(midi_song *midi) {
 	int result = 0;
 
 	stop_ft();
 	if (!midi || !midi->valid)
 		return 0;
 
-	if (some_flag1)
-	{
+	if (some_flag1) {
 		active_track2 = *midi;
 		return 0;
 	}
 
 #ifdef MUSIC_SDL
-	if (Mix_PlayMusic(midi->handle, -1))
-	{
+	if (Mix_PlayMusic(midi->handle, -1)) {
 		active_track = {false, nullptr};
 		result = 0;
-	}
-	else
-	{
+	} else {
 		active_track = *midi;
 		result = 1;
 	}
@@ -322,10 +342,9 @@ int midi::play_ft(midi_song* midi)
 	return result;
 }
 
-int midi::stop_ft()
-{
+int midi::stop_ft() {
 	int returnCode = 0;
-	
+
 #ifdef MUSIC_SDL
 	if (active_track.valid)
 		returnCode = Mix_HaltMusic();
@@ -348,107 +367,94 @@ int midi::stop_ft()
 /// </summary>
 /// <param name="file">Path to .MDS file</param>
 /// <returns>Vector that contains MIDI file</returns>
-std::vector<uint8_t>* midi::MdsToMidi(std::string file)
-{
+std::vector<uint8_t> *midi::MdsToMidi(std::string file) {
 	auto fileHandle = fopen(file.c_str(), "rb");
 	if (!fileHandle)
 		return nullptr;
 
 	fseek(fileHandle, 0, SEEK_END);
 	auto fileSize = static_cast<uint32_t>(ftell(fileHandle));
-	auto filePtr = reinterpret_cast<riff_header*>(memory::allocate(fileSize));
+	auto filePtr = reinterpret_cast<riff_header *>(memory::allocate(fileSize));
 	fseek(fileHandle, 0, SEEK_SET);
 	fread(filePtr, 1, fileSize, fileHandle);
 	fclose(fileHandle);
 
 	int returnCode = 0;
-	std::vector<uint8_t>* midiOut = nullptr;
-	do
-	{
-		if (fileSize < 12)
-		{
+	std::vector<uint8_t> *midiOut = nullptr;
+	do {
+		if (fileSize < 12) {
 			returnCode = 3;
 			break;
 		}
 		if (filePtr->Riff != FOURCC('R', 'I', 'F', 'F') ||
-			filePtr->Mids != FOURCC('M', 'I', 'D', 'S') ||
-			filePtr->Fmt != FOURCC('f', 'm', 't', ' '))
-		{
+		    filePtr->Mids != FOURCC('M', 'I', 'D', 'S') ||
+		    filePtr->Fmt != FOURCC('f', 'm', 't', ' ')) {
 			returnCode = 3;
 			break;
 		}
-		if (filePtr->FileSize > fileSize - 8)
-		{
+		if (filePtr->FileSize > fileSize - 8) {
 			returnCode = 3;
 			break;
 		}
-		if (fileSize - 12 < 8)
-		{
+		if (fileSize - 12 < 8) {
 			returnCode = 3;
 			break;
 		}
-		if (filePtr->FmtSize < 12 || filePtr->FmtSize > fileSize - 12)
-		{
+		if (filePtr->FmtSize < 12 || filePtr->FmtSize > fileSize - 12) {
 			returnCode = 3;
 			break;
 		}
 
 		auto streamIdUsed = filePtr->dwFlags == 0;
-		auto dataChunk = reinterpret_cast<riff_data*>(reinterpret_cast<char*>(&filePtr->dwTimeFormat) + filePtr->
-			FmtSize);
-		if (dataChunk->Data != FOURCC('d', 'a', 't', 'a'))
-		{
+		auto dataChunk = reinterpret_cast<riff_data *>(reinterpret_cast<char *>(&filePtr->dwTimeFormat) + filePtr->
+		                                               FmtSize);
+		if (dataChunk->Data != FOURCC('d', 'a', 't', 'a')) {
 			returnCode = 3;
 			break;
 		}
-		if (dataChunk->DataSize < 4)
-		{
+		if (dataChunk->DataSize < 4) {
 			returnCode = 3;
 			break;
 		}
 
 		auto srcPtr = dataChunk->Blocks;
 		std::vector<midi_event> midiEvents{};
-		for (auto blockIndex = dataChunk->BlocksPerChunk; blockIndex; blockIndex--)
-		{
+		for (auto blockIndex = dataChunk->BlocksPerChunk; blockIndex; blockIndex--) {
 			auto eventSizeInt = streamIdUsed ? 3 : 2;
 			auto eventCount = srcPtr->CbBuffer / (4 * eventSizeInt);
 
 			auto currentTicks = srcPtr->TkStart;
-			auto srcPtr2 = reinterpret_cast<uint32_t*>(srcPtr->AData);
-			for (auto i = 0u; i < eventCount; i++)
-			{
+			auto srcPtr2 = reinterpret_cast<uint32_t *>(srcPtr->AData);
+			for (auto i = 0u; i < eventCount; i++) {
 				currentTicks += srcPtr2[0];
 				auto event = streamIdUsed ? srcPtr2[2] : srcPtr2[1];
 				midiEvents.push_back({currentTicks, event});
 				srcPtr2 += eventSizeInt;
 			}
 
-			srcPtr = reinterpret_cast<riff_block*>(&srcPtr->AData[srcPtr->CbBuffer]);
+			srcPtr = reinterpret_cast<riff_block *>(&srcPtr->AData[srcPtr->CbBuffer]);
 		}
 
 		// MIDS events can be out of order in the file
-		std::sort(midiEvents.begin(), midiEvents.end(), [](const midi_event& lhs, const midi_event& rhs)
-		{
+		std::sort(midiEvents.begin(), midiEvents.end(), [](const midi_event &lhs, const midi_event &rhs) {
 			return lhs.iTicks < rhs.iTicks;
 		});
 
 		// MThd chunk
-		std::vector<uint8_t>& midiBytes = *new std::vector<uint8_t>();
+		std::vector<uint8_t> &midiBytes = *new std::vector<uint8_t>();
 		midiOut = &midiBytes;
 		midi_header header(SwapByteOrderShort(static_cast<uint16_t>(filePtr->dwTimeFormat)));
-		auto headerData = reinterpret_cast<const uint8_t*>(&header);
+		auto headerData = reinterpret_cast<const uint8_t *>(&header);
 		midiBytes.insert(midiBytes.end(), headerData, headerData + sizeof header);
 
 		// MTrk chunk
 		midi_track track(7);
-		auto trackData = reinterpret_cast<const uint8_t*>(&track);
+		auto trackData = reinterpret_cast<const uint8_t *>(&track);
 		midiBytes.insert(midiBytes.end(), trackData, trackData + sizeof track);
 		auto lengthPos = midiBytes.size() - 4;
 
 		auto prevTime = 0u;
-		for (const auto& event : midiEvents)
-		{
+		for (const auto &event: midiEvents) {
 			assertm(event.iTicks >= prevTime, "MIDS events: negative delta-time");
 			uint32_t delta = event.iTicks - prevTime;
 			prevTime = event.iTicks;
@@ -457,36 +463,33 @@ std::vector<uint8_t>* midi::MdsToMidi(std::string file)
 			uint32_t deltaVarLen;
 			auto count = ToVariableLen(delta, deltaVarLen);
 			deltaVarLen = SwapByteOrderInt(deltaVarLen);
-			auto deltaData = reinterpret_cast<const uint8_t*>(&deltaVarLen) + 4 - count;
+			auto deltaData = reinterpret_cast<const uint8_t *>(&deltaVarLen) + 4 - count;
 			midiBytes.insert(midiBytes.end(), deltaData, deltaData + count);
 
-			switch (event.iEvent >> 24)
-			{
-			case 0:
-				{
+			switch (event.iEvent >> 24) {
+				case 0: {
 					// Type 0 - MIDI short message. 3 bytes: xx p1 p2 00, where xx - message, p* - parameters
 					// Some of the messages have only one parameter
 					auto msgMask = (event.iEvent) & 0xF0;
 					auto shortMsg = (msgMask == 0xC0 || msgMask == 0xD0);
-					auto eventData = reinterpret_cast<const uint8_t*>(&event.iEvent);
+					auto eventData = reinterpret_cast<const uint8_t *>(&event.iEvent);
 					midiBytes.insert(midiBytes.end(), eventData, eventData + (shortMsg ? 2 : 3));
 					break;
 				}
-			case 1:
-				{
+				case 1: {
 					// Type 1 - tempo change, 3 bytes: xx xx xx 01
 					// Meta message, set tempo, 3 bytes payload
 					const uint8_t metaSetTempo[] = {0xFF, 0x51, 0x03};
 					midiBytes.insert(midiBytes.end(), metaSetTempo, metaSetTempo + 3);
 
 					auto eventBE = SwapByteOrderInt(event.iEvent);
-					auto eventData = reinterpret_cast<const uint8_t*>(&eventBE) + 1;
+					auto eventData = reinterpret_cast<const uint8_t *>(&eventBE) + 1;
 					midiBytes.insert(midiBytes.end(), eventData, eventData + 3);
 					break;
 				}
-			default:
-				assertm(0, "MIDS events: uknown event");
-				break;
+				default:
+					assertm(0, "MIDS events: uknown event");
+					break;
 			}
 		}
 
@@ -496,10 +499,9 @@ std::vector<uint8_t>* midi::MdsToMidi(std::string file)
 
 		// Set final MTrk size
 		auto lengthBE = SwapByteOrderInt(static_cast<uint32_t>(midiBytes.size()) - sizeof header - sizeof track);
-		auto lengthData = reinterpret_cast<const uint8_t*>(&lengthBE);
+		auto lengthData = reinterpret_cast<const uint8_t *>(&lengthBE);
 		std::copy_n(lengthData, 4, midiBytes.begin() + lengthPos);
-	}
-	while (false);
+	} while (false);
 
 	if (filePtr)
 		memory::free(filePtr);

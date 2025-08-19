@@ -1,41 +1,41 @@
 cmake_minimum_required(VERSION 3.16)
 project(SpaceCadetPinball)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 option(MUSIC_TSF "Use TinySoundFont for MIDI playback" ON)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/CMakeModules")
 
 # On Windows, set paths to SDL-devel packages here
-if(WIN32)
-   set(SDL2_PATH "${CMAKE_CURRENT_LIST_DIR}/Libs/SDL2")
-   set(SDL2_MIXER_PATH "${CMAKE_CURRENT_LIST_DIR}/Libs/SDL2_mixer")
-endif()
+if (WIN32)
+    set(SDL2_PATH "${CMAKE_CURRENT_LIST_DIR}/Libs/SDL2")
+    set(SDL2_MIXER_PATH "${CMAKE_CURRENT_LIST_DIR}/Libs/SDL2_mixer")
+endif ()
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-        set(USE_FLAGS "-s USE_SDL=2 -s USE_SDL_MIXER=2")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USE_FLAGS}")
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS}")
-        set(CMAKE_EXECUTABLE_SUFFIX .html)
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    set(USE_FLAGS "-lembind -s USE_SDL=2 -s USE_SDL_MIXER=2")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USE_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${USE_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${USE_FLAGS}")
+    set(CMAKE_EXECUTABLE_SUFFIX .html)
 
-        set(SDL2_FOUND TRUE)
-        set(SDL2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/SDL2/")
-        set(SDL2_MIXER_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/SDL2/")
-        set(SDL2_LIBRARIES "nul")
-else()
-        find_package(SDL2 REQUIRED)
-        find_package(SDL2_mixer REQUIRED)
-endif()
+    set(SDL2_FOUND TRUE)
+    set(SDL2_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/SDL2/")
+    set(SDL2_MIXER_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/SDL2/")
+    set(SDL2_LIBRARIES "nul")
+else ()
+    find_package(SDL2 REQUIRED)
+    find_package(SDL2_mixer REQUIRED)
+endif ()
 
 include_directories(${SDL2_INCLUDE_DIR} ${SDL2_MIXER_INCLUDE_DIR})
 get_property(dirs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
-foreach(dir ${dirs})
-  message(STATUS "Include dir='${dir}'")
-endforeach()
+foreach (dir ${dirs})
+    message(STATUS "Include dir='${dir}'")
+endforeach ()
 
 set(SOURCE_FILES
         SpaceCadetPinball/control.cpp
@@ -176,15 +176,15 @@ set(SOURCE_FILES
         SpaceCadetPinball/imstb_textedit.h
         SpaceCadetPinball/imstb_rectpack.h
         SpaceCadetPinball/imstb_truetype.h
-        )
+)
 
 if (MUSIC_TSF)
-        set(SOURCE_FILES ${SOURCE_FILES}
-                SpaceCadetPinball/gm_sf2.cpp
-                SpaceCadetPinball/tsf.cpp
-                SpaceCadetPinball/tml.h
-                SpaceCadetPinball/tsf.h)
-endif()
+    set(SOURCE_FILES ${SOURCE_FILES}
+            SpaceCadetPinball/gm_sf2.cpp
+            SpaceCadetPinball/tsf.cpp
+            SpaceCadetPinball/tml.h
+            SpaceCadetPinball/tsf.h)
+endif ()
 
 add_executable(SpaceCadetPinball ${SOURCE_FILES})
 
@@ -198,39 +198,46 @@ set_source_files_properties(
         SpaceCadetPinball/imgui_demo.cpp
         SpaceCadetPinball/imgui_impl_sdl.cpp
         SpaceCadetPinball/gm_sf2.cpp
-        SpaceCadetPinball/tsf.cpp        
+        SpaceCadetPinball/tsf.cpp
 
         PROPERTIES SKIP_PRECOMPILE_HEADERS 1
 )
 target_precompile_headers(SpaceCadetPinball
-  PUBLIC
-    SpaceCadetPinball/pch.h
+        PUBLIC
+        SpaceCadetPinball/pch.h
 )
 
 if (MUSIC_TSF)
-        target_compile_definitions(SpaceCadetPinball PRIVATE -DMUSIC_TSF)
-else()
-        target_compile_definitions(SpaceCadetPinball PRIVATE -DMUSIC_SDL)
-endif()
+    target_compile_definitions(SpaceCadetPinball PRIVATE -DMUSIC_TSF)
+else ()
+    target_compile_definitions(SpaceCadetPinball PRIVATE -DMUSIC_SDL)
+endif ()
 
 target_link_libraries(SpaceCadetPinball ${SDL2_LIBRARY} ${SDL2_MIXER_LIBRARY})
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
-        target_link_libraries(SpaceCadetPinball idbfs.js)
-        set_target_properties(SpaceCadetPinball PROPERTIES LINK_FLAGS
-        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s DEMANGLE_SUPPORT=1 \
+if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
+    target_link_libraries(SpaceCadetPinball idbfs.js)
+    set_target_properties(SpaceCadetPinball PROPERTIES LINK_FLAGS
+        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1  \
         --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/SpaceCadetPinball/emscripten_shell.html \
         --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources --bind")
-endif()
+    add_custom_command(TARGET SpaceCadetPinball POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+            SpaceCadetPinball/tmi.min.js
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tmi.min.js
+    )
+    message(STATUS "Emscripten build: ${CMAKE_CURRENT_BINARY_DIR}/index.html")
+endif ()
+
 
 # On Windows, copy DLL to output
-if(WIN32)
+if (WIN32)
     list(GET SDL2_LIBRARY 1 SDL2_LIB_PATH)
     get_filename_component(SDL2_DLL_PATH ${SDL2_LIB_PATH} DIRECTORY)
     get_filename_component(SDL2_MIXER_DLL_PATH ${SDL2_MIXER_LIBRARY} DIRECTORY)
-    message(STATUS "copy paths='${SDL2_DLL_PATH}' '${SDL2_MIXER_DLL_PATH}'") 
+    message(STATUS "copy paths='${SDL2_DLL_PATH}' '${SDL2_MIXER_DLL_PATH}'")
     add_custom_command(TARGET SpaceCadetPinball POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL2_DLL_PATH}/SDL2.dll" $<TARGET_FILE_DIR:SpaceCadetPinball>
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL2_MIXER_DLL_PATH}/SDL2_mixer.dll" $<TARGET_FILE_DIR:SpaceCadetPinball>
-        )
-endif()
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL2_DLL_PATH}/SDL2.dll" $<TARGET_FILE_DIR:SpaceCadetPinball>
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL2_MIXER_DLL_PATH}/SDL2_mixer.dll" $<TARGET_FILE_DIR:SpaceCadetPinball>
+    )
+endif ()

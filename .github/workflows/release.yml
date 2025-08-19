@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    # The CMake configure and build commands are platform-agnostic and should work equally well on Windows or Mac.
+    # You can convert this to a matrix build if you need cross-platform coverage.
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk
+
+    steps:
+      - name: Checkout
+        # Checkout the repository to the GitHub Actions runner
+        # If your repository is using submodules, you can either run `git submodule update --init --recursive` or add a `fetch-depth: 0` to the `checkout` step to ensure all submodules are checked out.
+        # See:
+        uses: actions/checkout@v4
+
+      - name: Pull game resources
+        # Downloads the game_resources folder from a remote bucket, to prevent committing the game files to git
+        # All this is, is just the entire game from a Windows XP install, zipped up.
+        run: wget -O game_resources.zip ${{ secrets.REMOTE_BUCKET }}/game_resources.zip && unzip game_resources.zip -d game_resources
+#        env:
+#          REMOTE_BUCKET: ${{ secrets.REMOTE_BUCKET }}
+
+      - name: Configure CMake
+        # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
+        # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
+        run: cmake -B ./build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DPLATFORM=Web -DCMAKE_TOOLCHAIN_FILE=/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake -S .
+
+      - name: Build
+        # Build your program with the given configuration
+        run: cmake --build ./build --config ${{env.BUILD_TYPE}} --target SpaceCadetPinball -- -j 2
+
+      - name: Upload Artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

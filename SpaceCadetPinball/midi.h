@@ -106,7 +106,7 @@ class midi
 public:
 	static int play_pb_theme(int flag);
 	static int music_stop();
-	static int music_init();
+	static int music_init(float volume = 1);
 	static void music_shutdown();
 private:
 	static midi_song currentMidi;

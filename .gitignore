@@ -268,8 +268,18 @@ __pycache__/
 
 #CMake generated
 out/
-/cmake-build-debug
+/cmake-build-*
 
 # Windows XP stuff
 DebugWinXp/
 ReleaseWinXp/
+
+# game_resources
+/game_resources
+!game_resources/README.txt
+*.zip
+frontend/
+uploadme
+
+# MacOS
+.DS_Store

@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "pb.h"
+#include "emscripten/emscripten.h"
+#include <emscripten/bind.h>
 
 
 #include "control.h"
@@ -28,15 +30,21 @@
 #include "score.h"
 #include "TPinballTable.h"
 #include "TTextBox.h"
+using namespace emscripten;
 
 TPinballTable* pb::MainTable = nullptr;
 DatFile* pb::record_table = nullptr;
 int pb::time_ticks = 0, pb::demo_mode = 0, pb::cheat_mode = 0, pb::game_mode = 2, pb::mode_countdown_;
 float pb::time_now, pb::time_next, pb::ball_speed_limit;
 high_score_struct pb::highscore_table[5];
+// This bool indicates if the game is the full version or the windows xp demo version.
 bool pb::FullTiltMode = false;
 
-
+/**
+ * Initializes the pinball game.
+ *
+ * @return int Returns 0 on success, 1 on failure.
+ */
 int pb::init()
 {
 	float projMat[12], zMin = 0, zScaler = 0;
@@ -106,6 +114,11 @@ int pb::init()
 	return 0;
 }
 
+/**
+ * Uninitializes the pinball game, releasing resources.
+ *
+ * @return int Always returns 0.
+ */
 int pb::uninit()
 {
 	score::unload_msg_font();
@@ -120,18 +133,28 @@ int pb::uninit()
 	return 0;
 }
 
+/**
+ * Resets the pinball table to its initial state.
+ */
 void pb::reset_table()
 {
 	if (MainTable)
 		MainTable->Message(1024, 0.0);
 }
 
-
+/**
+ * Performs the first-time setup for the game.
+ */
 void pb::firsttime_setup()
 {
 	render::update();
 }
 
+/**
+ * Changes the game mode.
+ *
+ * @param mode The new game mode to set.
+ */
 void pb::mode_change(int mode)
 {
 	switch (mode)
@@ -180,6 +203,11 @@ void pb::mode_change(int mode)
 	game_mode = mode;
 }
 
+/**
+ * Toggles the demo mode on or off.
+ * If demo mode is active, it stops the demo and resets the game.
+ * If demo mode is not active, it starts a new demo replay.
+ */
 void pb::toggle_demo()
 {
 	if (demo_mode)
@@ -197,6 +225,11 @@ void pb::toggle_demo()
 	}
 }
 
+
+/**
+ * sets the game to replay a level in demo mode.
+ * @param demoMode The level to replay in demo mode.
+ */
 void pb::replay_level(int demoMode)
 {
 	demo_mode = demoMode;
@@ -206,6 +239,12 @@ void pb::replay_level(int demoMode)
 	MainTable->Message(1014, static_cast<float>(options::Options.Players));
 }
 
+/**
+ * Sets the ball's acceleration based on the given x and y values.
+ *
+ * @param x The x component of the acceleration.
+ * @param y The y component of the acceleration.
+ */
 void pb::ballset(int x, int y)
 {
 	TBall* ball = MainTable->BallList->Get(0);
@@ -214,6 +253,11 @@ void pb::ballset(int x, int y)
 	ball->Speed = maths::normalize_2d(&ball->Acceleration);
 }
 
+/**
+ * Handles the frame update for the pinball game.
+ *
+ * @param dtMilliSec The time in milliseconds since the last frame.
+ */
 void pb::frame(int dtMilliSec)
 {
 	
@@ -253,6 +297,7 @@ void pb::frame(int dtMilliSec)
 		}
 	}
 }
+
 
 void pb::timed_frame(float timeNow, float timeDelta, bool drawBalls)
 {
@@ -310,6 +355,11 @@ void pb::timed_frame(float timeNow, float timeDelta, bool drawBalls)
 	}
 }
 
+/**
+ * Sets the size of the pinball window.
+ * @param width
+ * @param height
+ */
 void pb::window_size(int* width, int* height)
 {
 	*width = fullscrn::resolution_array[fullscrn::GetResolution()].TableWidth;
@@ -361,6 +411,10 @@ void pb::loose_focus()
 		MainTable->Message(1010, time_now);
 }
 
+/**
+ * Handles the key release event.
+ * @param key The key that was released
+ */
 void pb::keyup(int key)
 {
 	if (game_mode == 1 && !winmain::single_step && !demo_mode)
@@ -392,8 +446,13 @@ void pb::keyup(int key)
 	}
 }
 
+/**
+ * Handles the key down event.
+ * @param key The key that was pressed down
+ */
 void pb::keydown(int key)
 {
+	// std::cout << "Key pressed: " << key << std::endl;
 	if (winmain::single_step || demo_mode)
 		return;
 	if (game_mode != 1)
@@ -555,18 +614,18 @@ void pb::end_game()
 		}
 	}
 
-	if (!demo_mode && !MainTable->CheatsUsed)
-	{
-		for (auto i = 0; i < playerCount; ++i)
-		{
-			int position = high_score::get_score_position(highscore_table, scores[i]);
-			if (position >= 0)
-			{
-				strncpy(String1, pinball::get_rc_string(scoreIndex[i] + 26, 0), sizeof String1 - 1);
-				high_score::show_and_set_high_score_dialog(highscore_table, scores[i], position, String1);
-			}
-		}
-	}
+	// if (!demo_mode && !MainTable->CheatsUsed)
+	// {
+	// 	for (auto i = 0; i < playerCount; ++i)
+	// 	{
+	// 		int position = high_score::get_score_position(highscore_table, scores[i]);
+	// 		if (position >= 0)
+	// 		{
+	// 			strncpy(String1, pinball::get_rc_string(scoreIndex[i] + 26, 0), sizeof String1 - 1);
+	// 			high_score::show_and_set_high_score_dialog(highscore_table, scores[i], position, String1);
+	// 		}
+	// 	}
+	// }
 }
 
 void pb::high_scores()
@@ -647,3 +706,4 @@ float pb::collide(float timeNow, float timeDelta, TBall* ball)
 	}
 	return timeDelta;
 }
+

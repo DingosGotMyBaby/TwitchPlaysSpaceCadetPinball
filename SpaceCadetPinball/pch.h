@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cassert>
 #include <cmath>
+#include <random>
 #include <cstdint>
 #include <type_traits> /*For control template*/
 #include <chrono>
@@ -66,7 +67,10 @@ inline size_t pgm_save(int width, int height, char* data, FILE* outfile)
 
 inline float RandFloat()
 {
-	return static_cast<float>(std::rand() / static_cast<double>(RAND_MAX));
+	static thread_local std::mt19937 generator{std::random_device{}()};
+	static thread_local std::uniform_real_distribution<float> distribution(0.0f, RAND_MAX);
+	return  static_cast<float>(distribution(generator) / static_cast<double>(RAND_MAX));
+	// return static_cast<float>(std::rand() / static_cast<double>(RAND_MAX));
 }
 
 #endif //PCH_H

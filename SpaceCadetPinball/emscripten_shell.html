@@ -3,15 +3,16 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
     <title>3D Pinball for Windows - Space Cadet</title>
+    <script src="tmi.min.js"></script>
     <style>
         /* Based on https://tpenguinltg.github.io/winclassic/ */
         :root {
             --ActiveBorder: rgb(212, 208, 200);
             --ActiveTitle: rgb(10, 36, 106);
             --AppWorkspace: rgb(128, 128, 128);
-            --Background: rgb(58, 110, 165);
+            /*--Background: rgb(58, 110, 165);*/
             --ButtonAlternateFace: rgb(192, 192, 192);
             --ButtonDkShadow: rgb(64, 64, 64);
             --ButtonFace: rgb(212, 208, 200);
@@ -36,6 +37,7 @@
             --MenuText: rgb(0, 0, 0);
             --Scrollbar: rgb(212, 208, 200);
             --TitleText: rgb(255, 255, 255);
+            --Transparent: rgba(0, 0, 0, 0);
             --Window: rgb(255, 255, 255);
             --WindowFrame: rgb(0, 0, 0);
             --WindowText: rgb(0, 0, 0);
@@ -43,7 +45,7 @@
 
         body {
             font-family: Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--Background);
+            background-color: var(--Transparent);
             text-align: center;
         }
 
@@ -54,7 +56,7 @@
 
         canvas.emscripten {
             border: 0px none;
-            background-color: black;
+            background-color: var(--Transparent);
         }
 
         .titlebar {
@@ -188,137 +190,270 @@
 </head>
 
 <body>
-    <div class="window active">
-        <div class="titlebar">
-            <span class="titlebar-title">3D Pinball for Windows - Space Cadet</span>
-            <div class="titlebar-wincontrols">
-                <ul class="buttons-wrapper">
-                    <li class="button minimize">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="0.125017in" height="0.104181in"
-                            viewBox="0 0 12 10" class="button-content replaced-svg">
-                            <path id="Minimize" fill="black" stroke="black" stroke-width="0"
-                                d="M 2.00,7.00            C 2.00,7.00 8.00,7.00 8.00,7.00              8.00,7.00 8.00,9.00 8.00,9.00              8.00,9.00 2.00,9.00 2.00,9.00              2.00,9.00 2.00,7.00 2.00,7.00 Z">
-                            </path>
-                        </svg>
-                    </li>
-                    <li class="button maximize">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="0.125017in" height="0.104181in"
-                            viewBox="0 0 12 10" class="button-content replaced-svg">
-                            <path id="Maximize" fill="black" stroke="black" stroke-width="0"
-                                d="M 2.00,2.00            C 2.00,2.00 9.00,2.00 9.00,2.00              9.00,2.00 9.00,8.00 9.00,8.00              9.00,8.00 2.00,8.00 2.00,8.00              2.00,8.00 2.00,2.00 2.00,2.00 Z            M 1.00,0.00            C 1.00,0.00 1.00,9.00 1.00,9.00              1.00,9.00 10.00,9.00 10.00,9.00              10.00,9.00 10.00,0.00 10.00,0.00              10.00,0.00 1.00,0.00 1.00,0.00 Z">
-                            </path>
-                        </svg>
-                    </li>
-                    <li class="spacer"></li>
-                    <li class="button close">
-                        <svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" version="1.1"
-                            width="12" height="10" class="button-content replaced-svg">
-                            <g transform="translate(0,-1042.3622)" id="layer1">
-                                <path
+<div class="window active">
+    <div class="titlebar">
+        <span class="titlebar-title">3D Pinball for Windows - Space Cadet</span>
+        <div class="titlebar-wincontrols">
+            <ul class="buttons-wrapper">
+                <li class="button minimize">
+                    <svg class="button-content replaced-svg" height="0.104181in" viewBox="0 0 12 10"
+                         width="0.125017in" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M 2.00,7.00            C 2.00,7.00 8.00,7.00 8.00,7.00              8.00,7.00 8.00,9.00 8.00,9.00              8.00,9.00 2.00,9.00 2.00,9.00              2.00,9.00 2.00,7.00 2.00,7.00 Z" fill="black" id="Minimize" stroke="black"
+                              stroke-width="0">
+                        </path>
+                    </svg>
+                </li>
+                <li class="button maximize">
+                    <svg class="button-content replaced-svg" height="0.104181in" viewBox="0 0 12 10"
+                         width="0.125017in" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M 2.00,2.00            C 2.00,2.00 9.00,2.00 9.00,2.00              9.00,2.00 9.00,8.00 9.00,8.00              9.00,8.00 2.00,8.00 2.00,8.00              2.00,8.00 2.00,2.00 2.00,2.00 Z            M 1.00,0.00            C 1.00,0.00 1.00,9.00 1.00,9.00              1.00,9.00 10.00,9.00 10.00,9.00              10.00,9.00 10.00,0.00 10.00,0.00              10.00,0.00 1.00,0.00 1.00,0.00 Z" fill="black" id="Maximize" stroke="black"
+                              stroke-width="0">
+                        </path>
+                    </svg>
+                </li>
+                <li class="spacer"></li>
+                <li class="button close">
+                    <svg class="button-content replaced-svg" height="10" version="1.1"
+                         width="12" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
+                        <g id="layer1" transform="translate(0,-1042.3622)">
+                            <path
                                     d="m 2.0025485,1043.3853 2.0198115,0 0,1.0185 0.984011,0 0,0.984 1.985286,0 0,-0.984 1.001274,0 0,-1.0185 2.002548,0 0,1.0013 0,0 0,0 -1.001274,0 0,1.0012 -1.001274,0 0,0.9841 -1.001274,0 0,1.0012 1.001274,0 0,1.0013 1.001274,0 0,1.0013 1.001274,0 0,1.0013 -2.002548,0 0,-1.0013 -1.001274,0 0,-0.984 -1.985286,0 0,0.984 -1.001274,0 0,1.0013 -2.0025485,0 0,-1.0013 1.0012745,0 0,-1.0013 1.001274,0 0,-1.0013 1.001274,0 0,-1.0012 -1.001274,0 0,-0.9841 -1.001274,0 0,-1.0012 -1.0012745,0 0,-1.0186 z"
-                                    id="Close" fill="black" stroke-width="0"></path>
-                            </g>
-                        </svg>
-                    </li>
-                </ul>
-            </div>
+                                    fill="black" id="Close" stroke-width="0"></path>
+                        </g>
+                    </svg>
+                </li>
+            </ul>
         </div>
-
-        <div class="emscripten" id="status">Downloading...</div>
-        <div class="emscripten">
-            <progress value="0" max="100" id="progress" hidden=1></progress>
-        </div>
-        <canvas class="emscripten" id="canvas" style="display:none;" oncontextmenu="event.preventDefault()"
-            tabindex="-1"></canvas>
     </div>
 
-    <!--<textarea class="emscripten" id="output" rows="8"></textarea>-->
+    <div class="emscripten" id="status">Downloading...</div>
+    <div class="emscripten">
+        <progress hidden=1 id="progress" max="100" value="0"></progress>
+    </div>
+    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" style="display:none;"
+            tabindex="-1"></canvas>
+</div>
 
-    <script type='text/javascript'>
-        var statusElement = document.getElementById('status');
-        var progressElement = document.getElementById('progress');
+<!--<textarea class="emscripten" id="output" rows="8"></textarea>-->
 
-        var Module = {
-            preRun: [],
-            postRun: [],
-            print: (function () {
-                var element = document.getElementById('output');
-                if (element) element.value = ''; // clear browser cache
-                return function (text) {
-                    if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-                    // These replacements are necessary if you render to raw HTML
-                    //text = text.replace(/&/g, "&amp;");
-                    //text = text.replace(/</g, "&lt;");
-                    //text = text.replace(/>/g, "&gt;");
-                    //text = text.replace('\n', '<br>', 'g');
-                    console.log(text);
-                    /*if (element) {
-                        element.value += text + "\n";
-                        element.scrollTop = element.scrollHeight; // focus on bottom
-                    }*/
-                };
-            })(),
-            printErr: function (text) {
+<script type='text/javascript'>
+    const VolumeQueryParam = new URLSearchParams(window.location.search).get("vol") ?? 0.5;
+
+    let arguv = ["-vol", (VolumeQueryParam).toString()]
+
+    var statusElement = document.getElementById('status');
+    var progressElement = document.getElementById('progress');
+
+    var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function () {
+            var element = document.getElementById('output');
+            if (element) element.value = ''; // clear browser cache
+            return function (text) {
                 if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-                console.error(text);
-            },
-            canvas: (function () {
-                var canvas = document.getElementById('canvas');
-
-                // As a default initial behavior, pop up an alert when webgl context is lost. To make your
-                // application robust, you may want to override this behavior before shipping!
-                // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
-                canvas.addEventListener("webglcontextlost", function (e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
-
-                return canvas;
-            })(),
-            setStatus: function (text) {
-                if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-                if (text === Module.setStatus.last.text) return;
-
-                var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-                var now = Date.now();
-                if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
-                Module.setStatus.last.time = now;
-                Module.setStatus.last.text = text;
-                if (m) {
-                    text = m[1];
-                    progressElement.value = parseInt(m[2]) * 100;
-                    progressElement.max = parseInt(m[4]) * 100;
-                    progressElement.hidden = false;
-                } else {
-                    progressElement.value = null;
-                    progressElement.max = null;
-                    progressElement.hidden = true;
-
-                    var canvas = document.getElementById('canvas');
-                    canvas.style.display = "";
-                }
-                statusElement.innerHTML = text;
-
-                if (text === "") {
-                    statusElement.style.display = "none";
-                    progressElement.style.display = "none";
-                } else {
-                    statusElement.style.display = "";
-                    progressElement.style.display = "";
-                }
-            },
-            totalDependencies: 0,
-            monitorRunDependencies: function (left) {
-                this.totalDependencies = Math.max(this.totalDependencies, left);
-                Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-            }
-        };
-        Module.setStatus('Downloading...');
-        window.onerror = function () {
-            Module.setStatus('Exception thrown, see JavaScript console');
-            Module.setStatus = function (text) {
-                if (text) Module.printErr('[post-exception status] ' + text);
+                // These replacements are necessary if you render to raw HTML
+                //text = text.replace(/&/g, "&amp;");
+                //text = text.replace(/</g, "&lt;");
+                //text = text.replace(/>/g, "&gt;");
+                //text = text.replace('\n', '<br>', 'g');
+                console.log(text);
+                /*if (element) {
+                    element.value += text + "\n";
+                    element.scrollTop = element.scrollHeight; // focus on bottom
+                }*/
             };
+        })(),
+        printErr: function (text) {
+            // alert("ERROR OCCURRED: Check console for details.")
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            console.error(text);
+        },
+        canvas: (function () {
+            var canvas = document.getElementById('canvas');
+
+            // As a default initial behavior, pop up an alert when webgl context is lost. To make your
+            // application robust, you may want to override this behavior before shipping!
+            // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+            canvas.addEventListener("webglcontextlost", function (e) {
+                alert('WebGL context lost. You will need to reload the page.');
+                e.preventDefault();
+            }, false);
+
+            return canvas;
+        })(),
+        setStatus: function (text) {
+            if (!Module.setStatus.last) Module.setStatus.last = {time: Date.now(), text: ''};
+            if (text === Module.setStatus.last.text) return;
+
+            var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+            var now = Date.now();
+            if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+            Module.setStatus.last.time = now;
+            Module.setStatus.last.text = text;
+            if (m) {
+                text = m[1];
+                progressElement.value = parseInt(m[2]) * 100;
+                progressElement.max = parseInt(m[4]) * 100;
+                progressElement.hidden = false;
+            } else {
+                progressElement.value = null;
+                progressElement.max = null;
+                progressElement.hidden = true;
+
+                var canvas = document.getElementById('canvas');
+                canvas.style.display = "";
+            }
+            statusElement.innerHTML = text;
+
+            if (text === "") {
+                statusElement.style.display = "none";
+                progressElement.style.display = "none";
+            } else {
+                statusElement.style.display = "";
+                progressElement.style.display = "";
+            }
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function (left) {
+            this.totalDependencies = Math.max(this.totalDependencies, left);
+            Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies - left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        },
+        arguments: arguv,
+    };
+    Module.setStatus('Downloading...');
+    window.onerror = function () {
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = function (text) {
+            if (text) Module.printErr('[post-exception status] ' + text);
         };
-    </script>
-    {{{ SCRIPT }}}
+    };
+</script>
+<script>
+    const debugMode = new URLSearchParams(window.location.search).get("debug");
+
+    Module['onRuntimeInitialized'] = function () {
+        // This is called when the Emscripten runtime is fully initialized.
+        // You can put any code here that you want to run after the game is ready.
+        console.log('Emscripten runtime initialized.');
+
+        // Get all query params
+        let urlParms = new URLSearchParams(window.location.search);
+        // for (let [key, value] of urlParms.entries()) {
+        //     console.log(`${key}: ${value}`);
+        // }
+
+        /**
+         * Calls the C++ TriggerEvent function.
+         * @param {string} eventType The type of event to trigger (e.g., "leftdown", "launch", "newgame").
+         */
+        function callTriggerEvent(eventType) {
+            if (typeof Module !== 'undefined' && typeof Module.TriggerEvent === 'function') {
+                Module.TriggerEvent(eventType);
+                // console.log(`Triggered event: ${eventType}`);
+            } else {
+                console.error("Emscripten Module or TriggerEvent function not found.");
+            }
+        }
+
+        // init tmi.js
+        const client = new tmi.Client({
+            connection: {
+                reconnect: true,
+                maxReconnectAttempts: Infinity,
+                maxReconnectInterval: 30000, // 30 seconds
+                reconnectDecay: 1.4,
+                reconnectInterval: 5000, // 5 seconds
+                timeout: 180000, // 3 minutes
+            },
+            channels: [urlParms.get('channel') || 'bobross'] // Pulls from URL parameter or defaults to 'bobross'
+        });
+
+        client.connect().catch(console.error);
+        client.on('connected', (addr, port) => {
+            console.log(`Connected to ${addr}:${port} and listening to ${client.channels}`);
+        });
+
+        commandLock = [];
+
+
+        client.on('message', (channel, tags, message, self) => {
+            // console.log("Message received:", {channel, tags, message, self});
+            // Check if the message is from the bot itself
+            if (self) return; // Ignore messages from the bot itself
+
+            // Check if the message starts with a command prefix
+            if (message.startsWith('!')) {
+                const command = message.slice(1).toLowerCase().trim();
+
+                // Handle specific commands
+                switch (command) {
+                    case 'left':
+                        // Prevent spamming the left command
+                        if (commandLock.includes('left')) {
+                            return; // Ignore if already locked
+                        }
+                        callTriggerEvent('leftdown');
+                        commandLock.push('left'); // Lock the command
+                        setTimeout(() => {
+                            callTriggerEvent('leftup');
+                            commandLock = commandLock.filter(cmd => cmd !== 'left'); // Unlock after 200ms
+                        }, 200); // Simulate a 200msec hold
+                        break;
+                    case 'right':
+                        // Prevent spamming the right command
+                        if (commandLock.includes('right')) {
+                            return; // Ignore if already locked
+                        }
+                        callTriggerEvent('rightdown');
+                        setTimeout(() => {
+                            callTriggerEvent('rightup');
+                            commandLock = commandLock.filter(cmd => cmd !== 'right'); // Unlock after 200ms
+                        }, 200); // Simulate a 200msec hold
+                        break;
+                    case 'launch':
+                        // Allow mods, broadcaster, and VIPs
+                        isMod = tags.mod === true;
+                        isBroadcaster = channel.replace('#', '') === tags.username;
+                        isVip = tags.badges && tags.badges.vip === '1';
+
+                        if (!isMod && !isBroadcaster && !isVip) {
+                            return; // Ignore non-authorized users
+                        }
+                        callTriggerEvent("launch");
+                        break;
+                    case 'newgame':
+                        // Allow mods, broadcaster, and VIPs
+                        isMod = tags.mod === true;
+                        isBroadcaster = channel.replace('#', '') === tags.username;
+                        isVip = tags.badges && tags.badges.vip === '1';
+
+                        if (!isMod && !isBroadcaster && !isVip) {
+                            return; // Ignore non-authorized users
+                        }
+                        callTriggerEvent('newgame');
+                        break;
+                    case 'demo':
+                        // Allow mods, broadcaster, and VIPs
+                        isMod = tags.mod === true;
+                        isBroadcaster = channel.replace('#', '') === tags.username;
+                        isVip = tags.badges && tags.badges.vip === '1';
+
+                        if (!isMod && !isBroadcaster && !isVip) {
+                            return;
+                        }
+                        callTriggerEvent("demo");
+                        break;
+                    default:
+                    // console.log(`Unknown command: ${command}`);
+                }
+            }
+        });
+
+
+    };
+</script>
+{{{ SCRIPT }}}
 </body>
 
 </html>
