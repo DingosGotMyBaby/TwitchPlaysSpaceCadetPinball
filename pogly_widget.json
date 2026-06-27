@@ -1,0 +1,31 @@
+{
+  "widgetName": "Space Cadet Pinball (Twitch Plays)",
+  "widgetWidth": 600,
+  "widgetHeight": 440,
+  "chatIntegration": true,
+  "chatChannel": "{channel}",
+  "headerTag": "",
+  "bodyTag": "<iframe id=\"pinball-frame\" src=\"{gameUrl}?channel={channel}&vol={volume}\" style=\"width: 100%; height: 100%; border: none; background: transparent;\"></iframe>",
+  "styleTag": "html, body {\n  width: 100%;\n  height: 100%;\n  margin: 0;\n  padding: 0;\n  overflow: hidden;\n  background: transparent;\n}\niframe {\n  width: 100%;\n  height: 100%;\n  border: none;\n}",
+  "scriptTag": "var iframe = document.getElementById(\"pinball-frame\");\n\n// Forward all parent postMessages down to the nested game iframe\nwindow.addEventListener(\"message\", function(event) {\n  if (iframe && iframe.contentWindow) {\n    iframe.contentWindow.postMessage(event.data, \"*\");\n  }\n});\n\n// Explicit callback for Pogly live variables\nfunction onLiveVariableUpdate(name, value) {\n  if (iframe && iframe.contentWindow) {\n    iframe.contentWindow.postMessage({\n      type: \"variableUpdate\",\n      name: name,\n      value: value\n    }, \"*\");\n  }\n}\n\n// Explicit callback for Pogly Twitch Chat integration\nfunction onTwitchMessage(data) {\n  if (iframe && iframe.contentWindow) {\n    iframe.contentWindow.postMessage({\n      type: \"twitchMessage\",\n      data: data\n    }, \"*\");\n  }\n}",
+  "variables": [
+    {
+      "variableName": "channel",
+      "variableType": 1,
+      "variableValue": "bobross",
+      "variableLive": true
+    },
+    {
+      "variableName": "volume",
+      "variableType": 1,
+      "variableValue": "0.5",
+      "variableLive": true
+    },
+    {
+      "variableName": "gameUrl",
+      "variableType": 1,
+      "variableValue": "https://dingosgotmybaby.github.io/TwitchPlaysSpaceCadetPinball",
+      "variableLive": false
+    }
+  ]
+}

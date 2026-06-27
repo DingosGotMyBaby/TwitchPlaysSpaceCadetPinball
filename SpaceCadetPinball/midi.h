@@ -108,6 +108,7 @@ public:
 	static int music_stop();
 	static int music_init(float volume = 1);
 	static void music_shutdown();
+	static void set_music_volume(float volume);
 private:
 	static midi_song currentMidi;
 #ifdef MUSIC_TSF

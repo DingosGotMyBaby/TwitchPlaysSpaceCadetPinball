@@ -784,6 +784,19 @@ void winmain::UpdateFrameRate() {
  * @param event_type The type of event you wish to trigger from Javascript
  */
 void winmain::TriggerEvent(const std::string &event_type) {
+    if (event_type.rfind("volume:", 0) == 0) {
+        try {
+            float gameVolume = std::stof(event_type.substr(7));
+            gameVolume = std::max(0.0f, std::min(1.0f, gameVolume));
+            int sdlGameVolume = static_cast<int>(round(SDL_MIX_MAXVOLUME * gameVolume));
+            Mix_MasterVolume(sdlGameVolume);
+            Mix_Volume(-1, sdlGameVolume);
+            midi::set_music_volume(gameVolume);
+        } catch (const std::exception &e) {
+            std::cerr << "Failed to parse volume: " << e.what() << std::endl;
+        }
+        return;
+    }
     if (event_type == "leftdown") {
         pb::keydown(options::Options.LeftFlipperKey);
         return;

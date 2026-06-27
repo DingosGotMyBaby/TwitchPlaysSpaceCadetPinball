@@ -47,6 +47,14 @@
             font-family: Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--Transparent);
             text-align: center;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
 
         textarea.emscripten {
@@ -57,6 +65,14 @@
         canvas.emscripten {
             border: 0px none;
             background-color: var(--Transparent);
+        }
+
+        canvas.emscripten.loading {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 1px;
+            height: 1px;
         }
 
         .titlebar {
@@ -125,9 +141,9 @@
             border: 1px solid var(--ActiveBorder);
             box-shadow: -0.5px -0.5px 0px 0.5px var(--ButtonHilight), 0px 0px 0px 1px var(--ButtonShadow), -0.5px -0.5px 0px 1.5px var(--ButtonLight), 0px 0px 0px 2px var(--ButtonDkShadow);
             padding-right: 0;
-            margin-left: auto;
-            margin-right: auto;
             display: inline-block;
+            transform-origin: center center;
+            flex-shrink: 0;
         }
 
         .window.active {
@@ -230,14 +246,20 @@
     <div class="emscripten">
         <progress hidden=1 id="progress" max="100" value="0"></progress>
     </div>
-    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" style="display:none;"
+    <canvas class="emscripten loading" id="canvas" oncontextmenu="event.preventDefault()"
             tabindex="-1"></canvas>
 </div>
 
 <!--<textarea class="emscripten" id="output" rows="8"></textarea>-->
 
 <script type='text/javascript'>
-    const VolumeQueryParam = new URLSearchParams(window.location.search).get("vol") ?? 0.5;
+    function getQueryParam(name) {
+        var match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+        return match ? decodeURIComponent(match[1].replace(/\+/g, ' ')) : null;
+    }
+
+    var volParam = getQueryParam("vol");
+    var VolumeQueryParam = volParam !== null && volParam !== undefined ? parseFloat(volParam) : 0.5;
 
     let arguv = ["-vol", (VolumeQueryParam).toString()]
 
@@ -276,7 +298,7 @@
             // application robust, you may want to override this behavior before shipping!
             // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
             canvas.addEventListener("webglcontextlost", function (e) {
-                alert('WebGL context lost. You will need to reload the page.');
+                console.warn('WebGL context lost.');
                 e.preventDefault();
             }, false);
 
@@ -286,11 +308,14 @@
             if (!Module.setStatus.last) Module.setStatus.last = {time: Date.now(), text: ''};
             if (text === Module.setStatus.last.text) return;
 
-            var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+            var m = null;
+            if (typeof text === 'string') {
+                m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+            }
             var now = Date.now();
             if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
             Module.setStatus.last.time = now;
-            Module.setStatus.last.text = text;
+            Module.setStatus.last.text = text || '';
             if (m) {
                 text = m[1];
                 progressElement.value = parseInt(m[2]) * 100;
@@ -302,9 +327,9 @@
                 progressElement.hidden = true;
 
                 var canvas = document.getElementById('canvas');
-                canvas.style.display = "";
+                canvas.classList.remove('loading');
             }
-            statusElement.innerHTML = text;
+            statusElement.innerHTML = text || '';
 
             if (text === "") {
                 statusElement.style.display = "none";
@@ -328,129 +353,171 @@
             if (text) Module.printErr('[post-exception status] ' + text);
         };
     };
+
+    function resizeGame() {
+        var win = document.querySelector('.window');
+        if (!win) return;
+        var w = 600;
+        var h = 440;
+        var scaleX = window.innerWidth / w;
+        var scaleY = window.innerHeight / h;
+        var scale = Math.min(scaleX, scaleY);
+        win.style.transform = 'scale(' + scale + ')';
+    }
+    window.addEventListener('resize', resizeGame);
+    window.addEventListener('load', resizeGame);
+    setTimeout(resizeGame, 0);
 </script>
 <script>
-    const debugMode = new URLSearchParams(window.location.search).get("debug");
+    var debugMode = getQueryParam("debug");
+
+    var volParam = getQueryParam("vol");
+    var currentVolume = volParam !== null && volParam !== undefined ? parseFloat(volParam) : 0.5;
+    var initialChannel = getQueryParam("channel") || 'bobross';
+    var client = null;
+    var commandLock = [];
+
+    // Global listener for Pogly live variables
+    window.onLiveVariableUpdate = function (name, value) {
+        console.log(`Live variable update: ${name} = ${value}`);
+        if (name === 'vol' || name === 'volume') {
+            var vol = parseFloat(value);
+            if (!isNaN(vol)) {
+                currentVolume = vol;
+                if (typeof Module !== 'undefined' && typeof Module.TriggerEvent === 'function') {
+                    Module.TriggerEvent("volume:" + vol);
+                }
+            }
+        } else if (name === 'channel' || name === 'twitchChannel') {
+            initialChannel = value;
+            if (window.updateTwitchChannel) {
+                window.updateTwitchChannel(value);
+            }
+        }
+    };
+
+    // Global listener for Pogly twitch messages
+    window.onTwitchMessage = function (data) {
+        // If we receive messages via Pogly's own chat integration,
+        // disconnect our standalone client to avoid double events.
+        if (client && client.readyState() !== "CLOSED") {
+            console.log("Pogly chatIntegration active. Disconnecting standalone tmi.js client.");
+            client.disconnect().catch(console.error);
+        }
+        if (window.processTwitchMessage) {
+            window.processTwitchMessage(data.username, data.message, data);
+        }
+    };
+
+    // Listen to parent postMessages
+    window.addEventListener('message', (event) => {
+        var data = event.data;
+        if (!data) return;
+        
+        if (data.type === 'variableUpdate' || data.event === 'variableUpdate' || (data.name && data.value !== undefined)) {
+            window.onLiveVariableUpdate(data.name, data.value);
+        }
+        
+        if (data.type === 'twitchMessage' || data.event === 'twitchMessage' || (data.username && data.message !== undefined)) {
+            window.onTwitchMessage(data.data || data);
+        }
+    });
 
     Module['onRuntimeInitialized'] = function () {
-        // This is called when the Emscripten runtime is fully initialized.
-        // You can put any code here that you want to run after the game is ready.
         console.log('Emscripten runtime initialized.');
 
-        // Get all query params
-        let urlParms = new URLSearchParams(window.location.search);
-        // for (let [key, value] of urlParms.entries()) {
-        //     console.log(`${key}: ${value}`);
-        // }
-
-        /**
-         * Calls the C++ TriggerEvent function.
-         * @param {string} eventType The type of event to trigger (e.g., "leftdown", "launch", "newgame").
-         */
         function callTriggerEvent(eventType) {
             if (typeof Module !== 'undefined' && typeof Module.TriggerEvent === 'function') {
                 Module.TriggerEvent(eventType);
-                // console.log(`Triggered event: ${eventType}`);
             } else {
                 console.error("Emscripten Module or TriggerEvent function not found.");
             }
         }
 
-        // init tmi.js
-        const client = new tmi.Client({
-            connection: {
-                reconnect: true,
-                maxReconnectAttempts: Infinity,
-                maxReconnectInterval: 30000, // 30 seconds
-                reconnectDecay: 1.4,
-                reconnectInterval: 5000, // 5 seconds
-                timeout: 180000, // 3 minutes
-            },
-            channels: [urlParms.get('channel') || 'bobross'] // Pulls from URL parameter or defaults to 'bobross'
-        });
+        // Apply initial volume if it was updated prior to runtime initialization
+        if (currentVolume !== 0.5) {
+            callTriggerEvent("volume:" + currentVolume);
+        }
 
-        client.connect().catch(console.error);
-        client.on('connected', (addr, port) => {
-            console.log(`Connected to ${addr}:${port} and listening to ${client.channels}`);
-        });
-
-        commandLock = [];
-
-
-        client.on('message', (channel, tags, message, self) => {
-            // console.log("Message received:", {channel, tags, message, self});
-            // Check if the message is from the bot itself
-            if (self) return; // Ignore messages from the bot itself
-
-            // Check if the message starts with a command prefix
+        window.processTwitchMessage = function (username, message, tags) {
             if (message.startsWith('!')) {
-                const command = message.slice(1).toLowerCase().trim();
+                var command = message.slice(1).toLowerCase().trim();
 
-                // Handle specific commands
+                // Allow mods, broadcaster, and VIPs
+                var isMod = tags.mod === true || tags.isMod === true;
+                var isBroadcaster = initialChannel.toLowerCase() === username.toLowerCase()
+                                      || (tags.badges && (tags.badges.broadcaster === '1' || (typeof tags.badges.includes === 'function' && tags.badges.includes('broadcaster'))));
+                var isVip = (tags.badges && (tags.badges.vip === '1' || (typeof tags.badges.includes === 'function' && tags.badges.includes('vip')))) || tags.isVip === true;
+
                 switch (command) {
                     case 'left':
-                        // Prevent spamming the left command
-                        if (commandLock.includes('left')) {
-                            return; // Ignore if already locked
-                        }
+                        if (commandLock.includes('left')) return;
                         callTriggerEvent('leftdown');
-                        commandLock.push('left'); // Lock the command
+                        commandLock.push('left');
                         setTimeout(() => {
                             callTriggerEvent('leftup');
-                            commandLock = commandLock.filter(cmd => cmd !== 'left'); // Unlock after 200ms
-                        }, 200); // Simulate a 200msec hold
+                            commandLock = commandLock.filter(cmd => cmd !== 'left');
+                        }, 200);
                         break;
                     case 'right':
-                        // Prevent spamming the right command
-                        if (commandLock.includes('right')) {
-                            return; // Ignore if already locked
-                        }
+                        if (commandLock.includes('right')) return;
                         callTriggerEvent('rightdown');
+                        commandLock.push('right');
                         setTimeout(() => {
                             callTriggerEvent('rightup');
-                            commandLock = commandLock.filter(cmd => cmd !== 'right'); // Unlock after 200ms
-                        }, 200); // Simulate a 200msec hold
+                            commandLock = commandLock.filter(cmd => cmd !== 'right');
+                        }, 200);
                         break;
                     case 'launch':
-                        // Allow mods, broadcaster, and VIPs
-                        isMod = tags.mod === true;
-                        isBroadcaster = channel.replace('#', '') === tags.username;
-                        isVip = tags.badges && tags.badges.vip === '1';
-
-                        if (!isMod && !isBroadcaster && !isVip) {
-                            return; // Ignore non-authorized users
-                        }
+                        if (!isMod && !isBroadcaster && !isVip) return;
                         callTriggerEvent("launch");
                         break;
                     case 'newgame':
-                        // Allow mods, broadcaster, and VIPs
-                        isMod = tags.mod === true;
-                        isBroadcaster = channel.replace('#', '') === tags.username;
-                        isVip = tags.badges && tags.badges.vip === '1';
-
-                        if (!isMod && !isBroadcaster && !isVip) {
-                            return; // Ignore non-authorized users
-                        }
+                        if (!isMod && !isBroadcaster && !isVip) return;
                         callTriggerEvent('newgame');
                         break;
                     case 'demo':
-                        // Allow mods, broadcaster, and VIPs
-                        isMod = tags.mod === true;
-                        isBroadcaster = channel.replace('#', '') === tags.username;
-                        isVip = tags.badges && tags.badges.vip === '1';
-
-                        if (!isMod && !isBroadcaster && !isVip) {
-                            return;
-                        }
+                        if (!isMod && !isBroadcaster && !isVip) return;
                         callTriggerEvent("demo");
                         break;
-                    default:
-                    // console.log(`Unknown command: ${command}`);
                 }
             }
-        });
+        };
 
+        window.updateTwitchChannel = function (newChannel) {
+            if (!newChannel) return;
+            newChannel = newChannel.toLowerCase().replace('#', '').trim();
+            if (client) {
+                console.log("Disconnecting twitch client from current channel...");
+                client.disconnect().catch(console.error);
+            }
+            
+            console.log("Connecting twitch client to new channel: " + newChannel);
+            client = new tmi.Client({
+                connection: {
+                    reconnect: true,
+                    maxReconnectAttempts: Infinity,
+                    maxReconnectInterval: 30000,
+                    reconnectDecay: 1.4,
+                    reconnectInterval: 5000,
+                    timeout: 180000,
+                },
+                channels: [newChannel]
+            });
 
+            client.connect().catch(console.error);
+            client.on('connected', (addr, port) => {
+                console.log(`Connected to ${addr}:${port} and listening to ${client.getChannels()}`);
+            });
+
+            client.on('message', (channel, tags, message, self) => {
+                if (self) return;
+                window.processTwitchMessage(tags.username || tags['display-name'], message, tags);
+            });
+        };
+
+        // Initialize standalone tmi client
+        window.updateTwitchChannel(initialChannel);
     };
 </script>
 {{{ SCRIPT }}}

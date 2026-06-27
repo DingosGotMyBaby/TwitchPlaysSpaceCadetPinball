@@ -210,6 +210,16 @@ void midi::music_shutdown() {
 #endif
 }
 
+void midi::set_music_volume(float volume) {
+#if defined(MUSIC_SDL)
+	Mix_VolumeMusic(static_cast<int>(round(SDL_MIX_MAXVOLUME * volume)));
+#elif defined(MUSIC_TSF)
+	if (tsfSynth) {
+		tsf_set_volume(tsfSynth, volume);
+	}
+#endif
+}
+
 /**
  *  THIS SECTION IS FOR FULL TILT MIDI MUSIC
  *  It is not applicable for the demo game that was included with Windows XP.
