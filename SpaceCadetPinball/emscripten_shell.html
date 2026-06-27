@@ -361,7 +361,7 @@
         var h = 440;
         var scaleX = window.innerWidth / w;
         var scaleY = window.innerHeight / h;
-        var scale = Math.min(scaleX, scaleY);
+        var scale = Math.max(1.0, Math.min(scaleX, scaleY));
         win.style.transform = 'scale(' + scale + ')';
     }
     window.addEventListener('resize', resizeGame);
