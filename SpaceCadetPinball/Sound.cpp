@@ -4,6 +4,7 @@
 
 int Sound::num_channels;
 unsigned int Sound::enabled_flag = -1;
+int Sound::SfxVolume = 64;
 
 int Sound::Init(int voices)
 {
@@ -44,8 +45,12 @@ void Sound::Close()
 
 void Sound::PlaySound(Mix_Chunk* wavePtr, int minChannel, int maxChannel, unsigned int dwFlags, int16_t loops)
 {
-	if (wavePtr && enabled_flag)
-		Mix_PlayChannel(-1, wavePtr, loops);
+	if (wavePtr && enabled_flag) {
+		int channel = Mix_PlayChannel(-1, wavePtr, loops);
+		if (channel != -1) {
+			Mix_Volume(channel, SfxVolume);
+		}
+	}
 }
 
 Mix_Chunk* Sound::LoadWaveFile(std::string lpName)

@@ -171,7 +171,7 @@ int winmain::WinMain(LPCSTR lpCmdLine) {
         sdlGameVolume = std::clamp(sdlGameVolume, 0, SDL_MIX_MAXVOLUME);
 
         // Set Volume so as not to blow ears out
-        Mix_MasterVolume(sdlGameVolume); // Sets Master volume
+        Sound::SfxVolume = sdlGameVolume;
         Mix_Volume(-1, sdlGameVolume); // Sets All channels
         //int globalVolBefore = Mix_MasterVolume(sdlGameVolume);
         //int allChannelsVolBefore = Mix_Volume(-1, sdlGameVolume);
@@ -789,7 +789,7 @@ void winmain::TriggerEvent(const std::string &event_type) {
             float gameVolume = std::stof(event_type.substr(7));
             gameVolume = std::max(0.0f, std::min(1.0f, gameVolume));
             int sdlGameVolume = static_cast<int>(round(SDL_MIX_MAXVOLUME * gameVolume));
-            Mix_MasterVolume(sdlGameVolume);
+            Sound::SfxVolume = sdlGameVolume;
             Mix_Volume(-1, sdlGameVolume);
             midi::set_music_volume(gameVolume);
         } catch (const std::exception &e) {

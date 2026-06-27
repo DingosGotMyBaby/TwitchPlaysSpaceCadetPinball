@@ -4,6 +4,7 @@
 class Sound
 {
 public:
+	static int SfxVolume;
 	static int Init(int voices);
 	static void Enable(int channelFrom, int channelTo, int enableFlag);
 	static void Activate();
