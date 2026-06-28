@@ -219,7 +219,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     target_link_libraries(SpaceCadetPinball idbfs.js)
     set_target_properties(SpaceCadetPinball PROPERTIES OUTPUT_NAME "index")
     set_target_properties(SpaceCadetPinball PROPERTIES LINK_FLAGS
-        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1  \
+        "-s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s USE_WEBGL2=1  \
         --shell-file ${CMAKE_CURRENT_SOURCE_DIR}/SpaceCadetPinball/emscripten_shell.html \
         --preload-file ${CMAKE_CURRENT_SOURCE_DIR}/game_resources@game_resources --bind")
     add_custom_command(TARGET SpaceCadetPinball POST_BUILD

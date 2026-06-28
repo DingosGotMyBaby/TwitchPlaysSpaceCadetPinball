@@ -130,6 +130,12 @@ int winmain::WinMain(LPCSTR lpCmdLine) {
         window,
         -1,
         SDL_RENDERER_ACCELERATED);
+    if (!renderer) {
+#ifdef __EMSCRIPTEN__
+        // Fallback to software rendering if accelerated/WebGL fails
+        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+#endif
+    }
     Renderer = renderer;
     if (!renderer) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Could not create renderer", SDL_GetError(), window);
